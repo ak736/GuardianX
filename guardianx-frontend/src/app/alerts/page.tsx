@@ -1,7 +1,6 @@
 "use client";
 
 import React, { useState, useEffect } from 'react';
-import PageLayout from '@/components/ui/PageLayout';
 import AlertFilters from '@/components/alerts/AlertFilters';
 import AlertList, { Alert } from '@/components/alerts/AlertList';
 
@@ -90,7 +89,7 @@ export default function AlertsPage() {
   };
 
   return (
-    <PageLayout>
+    <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
       <div className="pb-5 border-b border-gray-200">
         <h3 className="text-lg leading-6 font-medium text-gray-900">Alerts & Notifications</h3>
         <p className="mt-2 max-w-4xl text-sm text-gray-500">
@@ -109,6 +108,6 @@ export default function AlertsPage() {
           </div>
         )}
       </div>
-    </PageLayout>
+    </div>
   );
 }

@@ -1,11 +1,10 @@
 "use client";
 
 import React from 'react';
-import PageLayout from '@/components/ui/PageLayout';
 import SystemStatusCard from '@/components/dashboard/SystemStatusCard';
 import SensorStatsCard from '@/components/dashboard/SensorStatsCard';
 import InfrastructureChart from '@/components/dashboard/InfrastructureChart';
-
+import Link from 'next/link';
 // Sample data
 const systemsData = [
   {
@@ -40,7 +39,7 @@ const chartData = [
 
 export default function DashboardPage() {
   return (
-    <PageLayout>
+    <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
       <div className="space-y-6">
         <div className="grid grid-cols-1 gap-6 md:grid-cols-2">
           <SystemStatusCard systems={systemsData} />
@@ -102,14 +101,14 @@ export default function DashboardPage() {
                 </ul>
               </div>
               <div className="mt-6">
-                <a href="/alerts" className="w-full flex justify-center items-center px-4 py-2 border border-gray-300 shadow-sm text-sm font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50">
+                <Link href="/alerts" className="w-full flex justify-center items-center px-4 py-2 border border-gray-300 shadow-sm text-sm font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50">
                   View all alerts
-                </a>
+                </Link>
               </div>
             </div>
           </div>
         </div>
       </div>
-    </PageLayout>
+    </div>
   );
 }

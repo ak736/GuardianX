@@ -1,72 +1,132 @@
 "use client";
 
-import React, { useCallback } from 'react';
-import { useWallet } from '@solana/wallet-adapter-react';
-import { useWalletModal } from '@solana/wallet-adapter-react-ui';
+import React, { useEffect, useState } from 'react';
 
 const WalletButton = () => {
-  const { connected, connecting, disconnect, publicKey } = useWallet();
-  const { setVisible } = useWalletModal();
+  const [connected, setConnected] = useState(false);
+  const [walletAddress, setWalletAddress] = useState("");
+  const [showDropdown, setShowDropdown] = useState(false);
 
-  const handleConnect = useCallback(() => {
-    if (!connected) {
-      // Instead of directly calling connect(), we'll show the wallet modal
-      setVisible(true);
+  // Close dropdown when clicking outside
+  useEffect(() => {
+    const handleClickOutside = () => {
+      setShowDropdown(false);
+    };
+
+    if (showDropdown) {
+      document.addEventListener('click', handleClickOutside);
     }
-  }, [connected, setVisible]);
 
-  const handleDisconnect = useCallback(() => {
-    if (connected) {
-      disconnect().catch((error) => {
-        console.error('Disconnect error:', error);
-      });
+    return () => {
+      document.removeEventListener('click', handleClickOutside);
+    };
+  }, [showDropdown]);
+
+  // Check if wallet is connected on load
+  useEffect(() => {
+    const checkWalletConnection = async () => {
+      try {
+        // Check if Phantom exists
+        if (window.phantom?.solana) {
+          try {
+            // Try to connect to an already trusted connection
+            const resp = await window.phantom.solana.connect({ onlyIfTrusted: true });
+            setWalletAddress(resp.publicKey.toString());
+            setConnected(true);
+          } catch (_) {
+            // Not already connected, that's ok
+            console.log("Not auto-connected");
+          }
+        }
+      } catch (err) {
+        console.error("Wallet check error:", err);
+      }
+    };
+
+    checkWalletConnection();
+  }, []);
+
+  // Connect wallet function
+  const connectWallet = async () => {
+    try {
+      if (!window.phantom?.solana) {
+        alert("Please install Phantom wallet");
+        return;
+      }
+      
+      const resp = await window.phantom.solana.connect();
+      setWalletAddress(resp.publicKey.toString());
+      setConnected(true);
+    } catch (err) {
+      console.error("Connection error:", err);
     }
-  }, [disconnect, connected]);
+  };
 
-  const copyAddress = useCallback(() => {
-    if (publicKey) {
-      navigator.clipboard.writeText(publicKey.toString());
+  // Disconnect wallet function
+  const disconnectWallet = async () => {
+    try {
+      if (window.phantom?.solana) {
+        await window.phantom.solana.disconnect();
+        setWalletAddress("");
+        setConnected(false);
+        setShowDropdown(false);
+      }
+    } catch (err) {
+      console.error("Disconnection error:", err);
+    }
+  };
+
+  const toggleDropdown = (e: React.MouseEvent) => {
+    e.stopPropagation(); // Prevent the document click from immediately closing it
+    setShowDropdown(!showDropdown);
+  };
+
+  const copyAddress = (e: React.MouseEvent) => {
+    e.stopPropagation();
+    if (walletAddress) {
+      navigator.clipboard.writeText(walletAddress);
       alert('Address copied to clipboard');
     }
-  }, [publicKey]);
+    setShowDropdown(false);
+  };
 
-  if (connected && publicKey) {
+  if (connected && walletAddress) {
     return (
-      <div className="relative group">
-        <button 
-          className="px-4 py-2 rounded-md text-white font-medium bg-blue-600 hover:bg-blue-700 transition-colors flex items-center"
+      <div className="relative">
+        <div 
+          className="px-4 py-2 rounded-md text-white font-medium bg-blue-600 hover:bg-blue-700 cursor-pointer flex items-center"
+          onClick={toggleDropdown}
         >
           <span className="h-2 w-2 bg-green-500 rounded-full mr-2"></span>
-          {publicKey.toString().slice(0, 4)}...{publicKey.toString().slice(-4)}
-        </button>
+          {walletAddress.slice(0, 4)}...{walletAddress.slice(-4)}
+        </div>
         
-        <div className="absolute right-0 mt-2 w-48 bg-white rounded-md shadow-lg overflow-hidden z-20 hidden group-hover:block">
-          <div className="py-1">
-            <button 
-              onClick={copyAddress}
-              className="w-full px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 text-left"
-            >
-              Copy address
-            </button>
-            <button 
-              onClick={handleDisconnect}
-              className="w-full px-4 py-2 text-sm text-red-600 hover:bg-gray-100 text-left"
+        {showDropdown && (
+          <div className="absolute right-0 mt-2 w-48 bg-white rounded-md shadow-lg z-50">
+            <div 
+              className="block w-full text-left px-4 py-2 text-sm text-red-600 hover:bg-gray-100 cursor-pointer"
+              onClick={disconnectWallet}
             >
               Disconnect
-            </button>
+            </div>
+            <div 
+              className="block w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 cursor-pointer"
+              onClick={copyAddress}
+            >
+              Copy address
+            </div>
           </div>
-        </div>
+        )}
       </div>
     );
   }
 
   return (
     <button
-      onClick={handleConnect}
-      disabled={connecting}
-      className="px-4 py-2 rounded-md text-white font-medium bg-blue-600 hover:bg-blue-700 disabled:bg-blue-300 transition-colors"
+      onClick={connectWallet}
+      className="px-4 py-2 rounded-md text-white font-medium bg-blue-600 hover:bg-blue-700"
     >
-      {connecting ? 'Connecting...' : 'Connect Wallet'}
+      Connect Wallet
     </button>
   );
 };
