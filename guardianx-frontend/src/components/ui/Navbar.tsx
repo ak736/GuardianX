@@ -28,7 +28,9 @@ const Navbar = () => {
                   className='h-24 w-auto'
                   priority
                 />
+
                 <span className="text-xl font-bold text-blue-600">GuardianX</span>
+                
               </Link>
             </div>
             <div className='hidden sm:ml-6 sm:flex sm:space-x-8'>
