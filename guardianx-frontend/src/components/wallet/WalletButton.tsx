@@ -22,30 +22,6 @@ const WalletButton = () => {
     };
   }, [showDropdown]);
 
-  // Check if wallet is connected on load
-  useEffect(() => {
-    const checkWalletConnection = async () => {
-      try {
-        // Check if Phantom exists
-        if (window.phantom?.solana) {
-          try {
-            // Try to connect to an already trusted connection
-            const resp = await window.phantom.solana.connect({ onlyIfTrusted: true });
-            setWalletAddress(resp.publicKey.toString());
-            setConnected(true);
-          } catch (_) {
-            // Not already connected, that's ok
-            console.log("Not auto-connected");
-          }
-        }
-      } catch (err) {
-        console.error("Wallet check error:", err);
-      }
-    };
-
-    checkWalletConnection();
-  }, []);
-
   // Connect wallet function
   const connectWallet = async () => {
     try {

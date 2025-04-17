@@ -1,15 +1,15 @@
 "use client";
 
 import React, { useState, useEffect } from 'react';
-import mapboxgl from 'mapbox-gl';
+import L from 'leaflet';
 import { useWallet } from '@solana/wallet-adapter-react';
 
 interface SensorPlacementProps {
-  map: mapboxgl.Map | null;
+  map: L.Map | null;
 }
 
-// Sample sensors data - In a real app, this would come from an API/blockchain
-const sensorsData: any = {
+// Sample sensors data
+const sensorsData = {
   type: 'FeatureCollection',
   features: [
     {
@@ -45,134 +45,130 @@ const sensorsData: any = {
   ]
 };
 
-const SensorPlacement = ({ map }: SensorPlacementProps) => {
+const SensorPlacement: React.FC<SensorPlacementProps> = ({ map }) => {
   const { connected, publicKey } = useWallet();
   const [placementMode, setPlacementMode] = useState(false);
-  const [markers, setMarkers] = useState<mapboxgl.Marker[]>([]);
-
-  // Add existing sensors to the map
+  const [markers, setMarkers] = useState<L.Marker[]>([]);
+  
   useEffect(() => {
     if (!map) return;
 
-    // Add sensors data
-    if (!map.getSource('sensors')) {
-      map.addSource('sensors', {
-        type: 'geojson',
-        data: sensorsData
-      });
-    }
-
-    // Add sensor points
-    if (!map.getLayer('sensors-points')) {
-      map.addLayer({
-        id: 'sensors-points',
-        type: 'circle',
-        source: 'sensors',
-        paint: {
-          'circle-radius': 6,
-          'circle-color': '#3B82F6', // blue
-          'circle-stroke-width': 2,
-          'circle-stroke-color': '#FFF'
-        }
-      });
-    }
-
-    // Add sensor range circles
-    if (!map.getLayer('sensors-range')) {
-      map.addLayer({
-        id: 'sensors-range',
-        type: 'circle',
-        source: 'sensors',
-        paint: {
-          'circle-radius': ['/', ['get', 'range'], 5], // scale down for display
-          'circle-color': 'rgba(59, 130, 246, 0.1)', // faint blue
-          'circle-stroke-width': 1,
-          'circle-stroke-color': 'rgba(59, 130, 246, 0.5)'
-        }
-      });
-    }
-
-    return () => {
-      // Clean up on unmount
-      if (map.getLayer('sensors-points')) map.removeLayer('sensors-points');
-      if (map.getLayer('sensors-range')) map.removeLayer('sensors-range');
-      if (map.getSource('sensors')) map.removeSource('sensors');
-    };
-  }, [map]);
-
-  // Handle placement mode
-  useEffect(() => {
-    if (!map) return;
-
-    const onMapClick = (e: mapboxgl.MapMouseEvent) => {
+    // Create a group to hold all sensor layers
+    const sensorsGroup = L.layerGroup().addTo(map);
+    const sensorsRangeGroup = L.layerGroup().addTo(map);
+    
+    // Add each sensor point and range circle
+    sensorsData.features.forEach(feature => {
+      const properties = feature.properties;
+      const geometry = feature.geometry;
+      if (!properties || !geometry) return;
+      
+      const { id, range } = properties;
+      const coordinates = geometry.coordinates;
+      const [lng, lat] = coordinates;
+      
+      // Add range circle
+      L.circle([lat, lng], {
+        radius: range,
+        color: 'rgba(59, 130, 246, 0.5)',
+        fillColor: 'rgba(59, 130, 246, 0.1)',
+        fillOpacity: 0.5,
+        weight: 1
+      }).addTo(sensorsRangeGroup);
+      
+      // Add sensor point
+      const marker = L.circleMarker([lat, lng], {
+        radius: 6,
+        color: '#FFF',
+        weight: 2,
+        fillColor: '#3B82F6', // blue
+        fillOpacity: 1
+      }).addTo(sensorsGroup);
+      
+      // Add popup
+      marker.bindPopup(`
+        <div>
+          <h3 class="font-bold">Sensor ${id}</h3>
+          <p class="text-sm">Range: ${range}m</p>
+        </div>
+      `);
+    });
+    
+    // Handle map click events for sensor placement
+    const handleMapClick = (e: L.LeafletMouseEvent) => {
       if (!placementMode || !connected || !publicKey) return;
-
-      // Create a new marker
-      const marker = new mapboxgl.Marker({ color: '#3B82F6' })
-        .setLngLat(e.lngLat)
-        .addTo(map);
+      
+      const { lat, lng } = e.latlng;
+      
+      // Create a marker for the new sensor
+      const marker = L.marker([lat, lng], {
+        draggable: true
+      }).addTo(map);
       
       // Add to marker list
       setMarkers(prev => [...prev, marker]);
-
-      // Create a popup for confirmation
-      const popup = new mapboxgl.Popup({ offset: 25 })
-        .setLngLat(e.lngLat)
-        .setHTML(`
-          <div>
-            <h3 class="font-bold">New Virtual Sensor</h3>
-            <p class="text-sm">Place sensor at this location?</p>
-            <div class="flex justify-between mt-2">
-              <button id="confirm-sensor" class="px-3 py-1 bg-green-600 text-white text-xs rounded">Confirm</button>
-              <button id="cancel-sensor" class="px-3 py-1 bg-gray-300 text-gray-700 text-xs rounded">Cancel</button>
-            </div>
+      
+      // Create popup for confirmation
+      const popupContent = document.createElement('div');
+      popupContent.innerHTML = `
+        <div>
+          <h3 class="font-bold">New Virtual Sensor</h3>
+          <p class="text-sm">Place sensor at this location?</p>
+          <div class="flex justify-between mt-2">
+            <button id="confirm-sensor" class="px-3 py-1 bg-green-600 text-white text-xs rounded">Confirm</button>
+            <button id="cancel-sensor" class="px-3 py-1 bg-gray-300 text-gray-700 text-xs rounded">Cancel</button>
           </div>
-        `)
-        .addTo(map);
-
-      // Handle popup button clicks
-      const confirmButton = document.getElementById('confirm-sensor');
-      const cancelButton = document.getElementById('cancel-sensor');
-
-      if (confirmButton) {
-        confirmButton.addEventListener('click', () => {
-          // Here you would call an API to store the sensor in the database/blockchain
-          alert('Sensor placement confirmed! This would be stored on the blockchain in a real implementation.');
-          popup.remove();
-          setPlacementMode(false);
-        });
-      }
-
-      if (cancelButton) {
-        cancelButton.addEventListener('click', () => {
-          marker.remove();
-          popup.remove();
-          setMarkers(prev => prev.filter(m => m !== marker));
-        });
-      }
+        </div>
+      `;
+      
+      marker.bindPopup(popupContent).openPopup();
+      
+      // Handle button clicks
+      setTimeout(() => {
+        const confirmButton = document.getElementById('confirm-sensor');
+        const cancelButton = document.getElementById('cancel-sensor');
+        
+        if (confirmButton) {
+          confirmButton.addEventListener('click', () => {
+            // Here you would call an API to store the sensor in the database/blockchain
+            alert('Sensor placement confirmed! This would be stored on the blockchain in a real implementation.');
+            marker.closePopup();
+            setPlacementMode(false);
+          });
+        }
+        
+        if (cancelButton) {
+          cancelButton.addEventListener('click', () => {
+            map.removeLayer(marker);
+            setMarkers(prev => prev.filter(m => m !== marker));
+          });
+        }
+      }, 0);
     };
-
+    
     if (placementMode) {
-      map.getCanvas().style.cursor = 'crosshair';
-      map.on('click', onMapClick);
+      map.getContainer().style.cursor = 'crosshair';
+      map.on('click', handleMapClick);
     } else {
-      map.getCanvas().style.cursor = '';
-      map.off('click', onMapClick);
+      map.getContainer().style.cursor = '';
+      map.off('click', handleMapClick);
     }
-
+    
     return () => {
-      map.getCanvas().style.cursor = '';
-      map.off('click', onMapClick);
+      map.removeLayer(sensorsGroup);
+      map.removeLayer(sensorsRangeGroup);
+      map.off('click', handleMapClick);
+      map.getContainer().style.cursor = '';
     };
   }, [map, placementMode, connected, publicKey]);
-
+  
   // Clear all temporary markers when exiting placement mode
   useEffect(() => {
-    if (!placementMode) {
-      markers.forEach(marker => marker.remove());
+    if (!placementMode && map) {
+      markers.forEach(marker => map.removeLayer(marker));
       setMarkers([]);
     }
-  }, [placementMode, markers]);
+  }, [placementMode, markers, map]);
 
   return (
     <div className="absolute bottom-4 right-4 z-10">

@@ -1,26 +1,51 @@
 "use client";
 
-import React from 'react';
-import { useWallet } from '@solana/wallet-adapter-react';
+import React, { useState } from 'react';
 
 const UserProfile = () => {
-  const { connected, publicKey } = useWallet();
+  // Get wallet status from our custom implementation
+  const [connected, setConnected] = useState(false);
+  const [walletAddress, setWalletAddress] = useState("");
 
-  if (!connected || !publicKey) {
-    return (
-      <div className="bg-white shadow overflow-hidden sm:rounded-lg p-6 text-center">
-        <p className="text-gray-500">Please connect your wallet to view your profile.</p>
-      </div>
-    );
-  }
-
-  // Sample data - in a real app, this would come from an API
+  // Sample data
   const userData = {
     activeSensors: 12,
     totalRewards: 305,
     contributionRank: 42,
     joinedDate: 'March 15, 2025',
   };
+
+  // No auto-connect check on load
+  // The component will get connection status from user interaction instead
+
+  const connectWallet = async () => {
+    try {
+      if (!window.phantom?.solana) {
+        alert("Please install Phantom wallet");
+        return;
+      }
+      
+      const resp = await window.phantom.solana.connect();
+      setWalletAddress(resp.publicKey.toString());
+      setConnected(true);
+    } catch (err) {
+      console.error("Connection error:", err);
+    }
+  };
+
+  if (!connected) {
+    return (
+      <div className="bg-white shadow overflow-hidden sm:rounded-lg p-6 text-center">
+        <p className="text-gray-500 mb-4">Please connect your wallet to view your profile.</p>
+        <button
+          onClick={connectWallet}
+          className="px-4 py-2 rounded-md text-white font-medium bg-blue-600 hover:bg-blue-700"
+        >
+          Connect Wallet
+        </button>
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-6">
@@ -34,7 +59,7 @@ const UserProfile = () => {
             <div className="bg-gray-50 px-4 py-5 sm:grid sm:grid-cols-3 sm:gap-4 sm:px-6">
               <dt className="text-sm font-medium text-gray-500">Wallet Address</dt>
               <dd className="mt-1 text-sm text-gray-900 sm:mt-0 sm:col-span-2">
-                {publicKey.toString()}
+                {walletAddress}
               </dd>
             </div>
             <div className="bg-white px-4 py-5 sm:grid sm:grid-cols-3 sm:gap-4 sm:px-6">

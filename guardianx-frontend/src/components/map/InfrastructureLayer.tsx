@@ -1,23 +1,14 @@
 "use client";
 
 import React, { useEffect } from 'react';
-import mapboxgl from 'mapbox-gl';
-import { FeatureCollection, Point, Feature, GeoJsonProperties } from 'geojson';
+import L from 'leaflet';
 
 interface InfrastructureLayerProps {
-  map: mapboxgl.Map | null;
+  map: L.Map | null;
 }
 
-interface InfrastructureProperties {
-  id: string;
-  name: string;
-  type: 'power' | 'water' | 'telecom';
-  status: 'normal' | 'warning' | 'danger';
-  description: string;
-}
-
-// Sample infrastructure data - In a real app, this would come from an API
-const infrastructureData: FeatureCollection<Point, InfrastructureProperties> = {
+// Sample infrastructure data
+const infrastructureData = {
   type: 'FeatureCollection',
   features: [
     {
@@ -93,27 +84,70 @@ const infrastructureData: FeatureCollection<Point, InfrastructureProperties> = {
   ]
 };
 
+// Function to get color based on infrastructure status
+const getStatusColor = (status: string) => {
+  switch (status) {
+    case 'normal': return '#10B981'; // green
+    case 'warning': return '#F59E0B'; // yellow 
+    case 'danger': return '#EF4444';  // red
+    default: return '#CBD5E1'; // gray
+  }
+};
+
 const InfrastructureLayer: React.FC<InfrastructureLayerProps> = ({ map }) => {
   useEffect(() => {
     if (!map) return;
 
-    // Add the infrastructure data as a source
-    if (!map.getSource('infrastructure')) {
-      map.addSource('infrastructure', {
-        type: 'geojson',
-        data: infrastructureData as any
+    // Create a group to hold all infrastructure layers
+    const infrastructureGroup = L.layerGroup().addTo(map);
+    
+    // Add each infrastructure point
+    infrastructureData.features.forEach(feature => {
+      const properties = feature.properties;
+      const geometry = feature.geometry;
+      if (!properties || !geometry) return;
+      
+      const { name, type, status, description } = properties;
+      const coordinates = geometry.coordinates;
+      const [lng, lat] = coordinates;
+      
+      // Create a circle marker with appropriate styling
+      const marker = L.circleMarker([lat, lng], {
+        radius: 10,
+        color: '#FFF',
+        weight: 2,
+        fillColor: getStatusColor(status),
+        fillOpacity: 1
+      }).addTo(infrastructureGroup);
+      
+      // Add a popup
+      marker.bindPopup(`
+        <div>
+          <h3 class="font-bold">${name}</h3>
+          <p class="text-sm">${description}</p>
+          <p class="text-xs mt-1">Type: ${type.charAt(0).toUpperCase() + type.slice(1)}</p>
+          <p class="text-xs">Status: ${status.charAt(0).toUpperCase() + status.slice(1)}</p>
+        </div>
+      `);
+      
+      // Add interaction
+      marker.on('mouseover', function() {
+        marker.openPopup();
       });
-    }
-
-    // Rest of the code remains the same...
-    // ...
-
+      
+      // Add a text label
+      L.marker([lat, lng], {
+        icon: L.divIcon({
+          html: `<div style="background-color: white; padding: 2px 5px; border-radius: 3px; font-size: 12px; white-space: nowrap;">${name}</div>`,
+          className: 'infrastructure-label',
+          iconAnchor: [15, -15]
+        })
+      }).addTo(infrastructureGroup);
+    });
+    
+    // Cleanup function
     return () => {
-      if (map.getLayer('infrastructure-power')) map.removeLayer('infrastructure-power');
-      if (map.getLayer('infrastructure-water')) map.removeLayer('infrastructure-water');
-      if (map.getLayer('infrastructure-telecom')) map.removeLayer('infrastructure-telecom');
-      if (map.getLayer('infrastructure-labels')) map.removeLayer('infrastructure-labels');
-      if (map.getSource('infrastructure')) map.removeSource('infrastructure');
+      map.removeLayer(infrastructureGroup);
     };
   }, [map]);
 
