@@ -19,18 +19,19 @@ const Navbar = () => {
         <div className='flex justify-between h-16'>
           <div className='flex'>
             <div className='flex-shrink-0 flex items-center'>
-              <Link href='/' aria-label='GuardianX Home' className="flex items-center">
+              <Link
+                href='/'
+                aria-label='GuardianX Home'
+                className='flex items-center'
+              >
                 <Image
                   src='/Logo.png'
                   alt='GuardianX Logo'
                   width={480}
                   height={64}
-                  className='h-24 w-auto'
+                  className='h-28 w-auto'
                   priority
                 />
-
-                <span className="text-xl font-bold text-blue-600">GuardianX</span>
-                
               </Link>
             </div>
             <div className='hidden sm:ml-6 sm:flex sm:space-x-8'>
