@@ -1,11 +1,10 @@
 "use client";
 
-import React, { useState } from 'react';
+import React from 'react';
+import { useWalletContext } from '@/contexts/WalletContext';
 
 const UserProfile = () => {
-  // Get wallet status from our custom implementation
-  const [connected, setConnected] = useState(false);
-  const [walletAddress, setWalletAddress] = useState("");
+  const { connected, connecting, walletAddress, connectWallet } = useWalletContext();
 
   // Sample data
   const userData = {
@@ -15,33 +14,16 @@ const UserProfile = () => {
     joinedDate: 'March 15, 2025',
   };
 
-  // No auto-connect check on load
-  // The component will get connection status from user interaction instead
-
-  const connectWallet = async () => {
-    try {
-      if (!window.phantom?.solana) {
-        alert("Please install Phantom wallet");
-        return;
-      }
-      
-      const resp = await window.phantom.solana.connect();
-      setWalletAddress(resp.publicKey.toString());
-      setConnected(true);
-    } catch (err) {
-      console.error("Connection error:", err);
-    }
-  };
-
   if (!connected) {
     return (
       <div className="bg-white shadow overflow-hidden sm:rounded-lg p-6 text-center">
         <p className="text-gray-500 mb-4">Please connect your wallet to view your profile.</p>
         <button
           onClick={connectWallet}
-          className="px-4 py-2 rounded-md text-white font-medium bg-blue-600 hover:bg-blue-700"
+          disabled={connecting}
+          className="px-4 py-2 rounded-md text-white font-medium bg-blue-600 hover:bg-blue-700 disabled:bg-blue-400"
         >
-          Connect Wallet
+          {connecting ? 'Connecting...' : 'Connect Wallet'}
         </button>
       </div>
     );

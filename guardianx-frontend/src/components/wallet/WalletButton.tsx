@@ -1,14 +1,14 @@
 "use client";
 
-import React, { useEffect, useState } from 'react';
+import React, { useState } from 'react';
+import { useWalletContext } from '@/contexts/WalletContext';
 
 const WalletButton = () => {
-  const [connected, setConnected] = useState(false);
-  const [walletAddress, setWalletAddress] = useState("");
+  const { connected, connecting, walletAddress, connectWallet, disconnectWallet } = useWalletContext();
   const [showDropdown, setShowDropdown] = useState(false);
 
   // Close dropdown when clicking outside
-  useEffect(() => {
+  React.useEffect(() => {
     const handleClickOutside = () => {
       setShowDropdown(false);
     };
@@ -22,38 +22,8 @@ const WalletButton = () => {
     };
   }, [showDropdown]);
 
-  // Connect wallet function
-  const connectWallet = async () => {
-    try {
-      if (!window.phantom?.solana) {
-        alert("Please install Phantom wallet");
-        return;
-      }
-      
-      const resp = await window.phantom.solana.connect();
-      setWalletAddress(resp.publicKey.toString());
-      setConnected(true);
-    } catch (err) {
-      console.error("Connection error:", err);
-    }
-  };
-
-  // Disconnect wallet function
-  const disconnectWallet = async () => {
-    try {
-      if (window.phantom?.solana) {
-        await window.phantom.solana.disconnect();
-        setWalletAddress("");
-        setConnected(false);
-        setShowDropdown(false);
-      }
-    } catch (err) {
-      console.error("Disconnection error:", err);
-    }
-  };
-
   const toggleDropdown = (e: React.MouseEvent) => {
-    e.stopPropagation(); // Prevent the document click from immediately closing it
+    e.stopPropagation();
     setShowDropdown(!showDropdown);
   };
 
@@ -100,9 +70,10 @@ const WalletButton = () => {
   return (
     <button
       onClick={connectWallet}
-      className="px-4 py-2 rounded-md text-white font-medium bg-blue-600 hover:bg-blue-700"
+      disabled={connecting}
+      className="px-4 py-2 rounded-md text-white font-medium bg-blue-600 hover:bg-blue-700 disabled:bg-blue-400"
     >
-      Connect Wallet
+      {connecting ? 'Connecting...' : 'Connect Wallet'}
     </button>
   );
 };
